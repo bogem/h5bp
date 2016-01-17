@@ -59,7 +59,7 @@ gulp.task('copy:misc', function () {
 
         // Exclude the following files
         // (other tasks will handle the copying of these files)
-        '!' + dirs.src + '/css/main.css',
+        '!' + dirs.src + '/css/*',
         '!' + dirs.src + '/index.html'
 
     ], {
@@ -83,7 +83,7 @@ gulp.task('lint:js', function () {
 
 gulp.task('css:concat', function() {
     return gulp.src(['node_modules/normalize.css/normalize.css', dirs.src + '/css/main.css'])
-               .pipe(plugins.concat('main.css', {newLine: ';'}))
+               .pipe(plugins.concat('main.css'))
                .pipe(gulp.dest(dirs.dist + '/css/'))
                .pipe(plugins.autoprefixer({
                    browsers: ['last 2 versions', 'ie >= 8', '> 1%'],
