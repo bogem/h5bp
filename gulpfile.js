@@ -4,10 +4,6 @@ var gulp = require('gulp');
 // and attach them to the `plugins` object
 var plugins = require('gulp-load-plugins')();
 
-// Temporary solution until gulp 4
-// https://github.com/gulpjs/gulp/issues/355
-var runSequence = require('run-sequence');
-
 var pkg = require('./package.json');
 var dirs = pkg['h5bp-configs'].directories;
 
@@ -17,38 +13,13 @@ var dirs = pkg['h5bp-configs'].directories;
 
 gulp.task('clean', function (done) {
     require('del')([
-        dirs.dist
+        dirs.dist + "/layouts/",
+        dirs.dist + "/static/",
+        dirs.dist + "/LICENSE.md",
+        dirs.dist + "/theme.toml"
     ]).then(function () {
         done();
     });
-});
-
-gulp.task('copy', [
-    'copy:.htaccess',
-    'copy:index.html',
-    'copy:jquery',
-    'copy:license',
-    'copy:misc',
-]);
-
-gulp.task('copy:.htaccess', function () {
-    return gulp.src(dirs.src + '/.htaccess')
-               .pipe(gulp.dest(dirs.dist));
-});
-
-gulp.task('copy:index.html', function () {
-    return gulp.src(dirs.src + '/index.html')
-               .pipe(gulp.dest(dirs.dist));
-});
-
-gulp.task('copy:jquery', function () {
-    return gulp.src(['node_modules/jquery/dist/jquery.min.js'])
-               .pipe(gulp.dest(dirs.dist + '/js/vendor'));
-});
-
-gulp.task('copy:license', function () {
-    return gulp.src('LICENSE.txt')
-               .pipe(gulp.dest(dirs.dist));
 });
 
 gulp.task('copy:misc', function () {
@@ -59,63 +30,69 @@ gulp.task('copy:misc', function () {
 
         // Exclude the following files
         // (other tasks will handle the copying of these files)
-        '!' + dirs.src + '/css/*',
-        '!' + dirs.src + '/index.html'
+        '!' + dirs.src + '/static/css/*',
+        '!' + dirs.src + '/static/js/*'
 
     ], {
 
-        // Include hidden files by default
-        dot: true
+        // Exclude hidden files
+        dot: false
 
     }).pipe(gulp.dest(dirs.dist));
 });
 
-gulp.task('lint:js', function () {
-    return gulp.src([
-        'gulpfile.js',
-        dirs.src + '/js/*.js',
-        dirs.test + '/*.js'
-    ]).pipe(plugins.jscs())
-      .pipe(plugins.jshint())
-      .pipe(plugins.jshint.reporter('jshint-stylish'))
-      .pipe(plugins.jshint.reporter('fail'));
-});
-
 gulp.task('css:concat', function() {
-    return gulp.src(['node_modules/normalize.css/normalize.css', dirs.src + '/css/main.css'])
+    return gulp.src([
+               dirs.src + '/static/css/normalize.css',
+               dirs.src + '/static/css/main.css'
+               ])
                .pipe(plugins.concat('main.css'))
-               .pipe(gulp.dest(dirs.dist + '/css/'))
                .pipe(plugins.autoprefixer({
-                   browsers: ['last 2 versions', 'ie >= 8', '> 1%'],
+                   browsers: ['ie >= 8', '> 1%'],
                    cascade: false
                }))
-               .pipe(gulp.dest(dirs.dist + '/css'));
+               .pipe(gulp.dest(dirs.dist + '/static/css/'));
 });
 
-gulp.task('css:minify', function() {
+gulp.task('css:minify', ['css:concat'], function() {
     var banner = '/*! H5BP v' + pkg.version +
                     ' | ' + pkg.license.type + ' License' +
                     ' | ' + pkg.homepage + ' */\n';
 
-    return gulp.src(dirs.dist + '/css/main.css')
+    return gulp.src(dirs.dist + '/static/css/main.css')
                .pipe(plugins.cssnano())
                .pipe(plugins.header(banner))
-               .pipe(gulp.dest(dirs.dist + '/css/'));
+               .pipe(gulp.dest(dirs.dist + '/static/css/'));
 });
 
+
+gulp.task('js:concat', function() {
+    return gulp.src([
+                'node_modules/jquery/dist/jquery.min.js',
+                dirs.src + '/static/js/plugins.js'
+                ])
+                .pipe(plugins.concat('main.js'))
+                .pipe(gulp.dest(dirs.dist + '/static/js/'));
+});
+
+gulp.task('js:uglify', ['js:concat'], function() {
+    return gulp.src(dirs.dist + '/static/js/main.js')
+               .pipe(plugins.uglify())
+               .pipe(gulp.dest(dirs.dist + '/static/js/'));
+});
 
 // ---------------------------------------------------------------------
 // | Main tasks                                                        |
 // ---------------------------------------------------------------------
 
-gulp.task('build', function (done) {
-    runSequence(
-        'clean',
-        ['lint:js', 'copy'],
-        'css:concat',
-        'css:minify',
-    done);
-});
+gulp.task('build', [
+    'clean',
+    'copy:misc',
+    'css:concat',
+    'css:minify',
+    'js:concat',
+    'js:uglify'
 
+]);
 
 gulp.task('default', ['build']);
